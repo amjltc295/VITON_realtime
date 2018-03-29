@@ -4,7 +4,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-import common
+from .common import (regularizer_conv, batchnorm_fused,
+                    activation_fn)
 
 DEFAULT_PADDING = 'SAME'
 
@@ -13,7 +14,7 @@ _init_xavier = tf.contrib.layers.xavier_initializer()
 _init_norm = tf.truncated_normal_initializer(stddev=0.01)
 _init_zero = slim.init_ops.zeros_initializer()
 _l2_regularizer_00004 = tf.contrib.layers.l2_regularizer(0.00004)
-_l2_regularizer_convb = tf.contrib.layers.l2_regularizer(common.regularizer_conv)
+_l2_regularizer_convb = tf.contrib.layers.l2_regularizer(regularizer_conv)
 
 
 def layer(op):
@@ -166,7 +167,7 @@ class BaseNetwork(object):
 
     @layer
     def separable_conv(self, input, k_h, k_w, c_o, stride, name, relu=True, set_bias=True):
-        with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
+        with slim.arg_scope([slim.batch_norm], decay=0.999, fused=batchnorm_fused, is_training=self.trainable):
             output = slim.separable_convolution2d(input,
                                                   num_outputs=None,
                                                   stride=stride,
@@ -187,7 +188,7 @@ class BaseNetwork(object):
                                         c_o,
                                         stride=1,
                                         kernel_size=[1, 1],
-                                        activation_fn=common.activation_fn if relu else None,
+                                        activation_fn=activation_fn if relu else None,
                                         weights_initializer=_init_xavier,
                                         # weights_initializer=_init_norm,
                                         biases_initializer=_init_zero if set_bias else None,
@@ -200,7 +201,7 @@ class BaseNetwork(object):
 
     @layer
     def convb(self, input, k_h, k_w, c_o, stride, name, relu=True, set_bias=True, set_tanh=False):
-        with slim.arg_scope([slim.batch_norm], decay=0.999, fused=common.batchnorm_fused, is_training=self.trainable):
+        with slim.arg_scope([slim.batch_norm], decay=0.999, fused=batchnorm_fused, is_training=self.trainable):
             output = slim.convolution2d(input, c_o, kernel_size=[k_h, k_w],
                                         stride=stride,
                                         normalizer_fn=slim.batch_norm,
@@ -209,7 +210,7 @@ class BaseNetwork(object):
                                         # weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                                         biases_initializer=_init_zero if set_bias else None,
                                         trainable=self.trainable,
-                                        activation_fn=common.activation_fn if relu else None,
+                                        activation_fn=activation_fn if relu else None,
                                         scope=name)
             if set_tanh:
                 output = tf.nn.sigmoid(output, name=name + '_extra_acv')

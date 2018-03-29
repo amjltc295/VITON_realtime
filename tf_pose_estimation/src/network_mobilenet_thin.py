@@ -1,13 +1,13 @@
 import tensorflow as tf
 
-import network_base
+from .network_base import BaseNetwork
 
 
-class MobilenetNetworkThin(network_base.BaseNetwork):
+class MobilenetNetworkThin(BaseNetwork):
     def __init__(self, inputs, trainable=True, conv_width=1.0, conv_width2=None):
         self.conv_width = conv_width
         self.conv_width2 = conv_width2 if conv_width2 else conv_width
-        network_base.BaseNetwork.__init__(self, inputs, trainable)
+        BaseNetwork.__init__(self, inputs, trainable)
 
     def setup(self):
         min_depth = 8
