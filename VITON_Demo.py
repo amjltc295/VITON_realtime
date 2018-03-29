@@ -11,6 +11,7 @@ import yaml
 import os
 
 import SS_NAN.LIP
+import SS_NAN.visualize as visualize
 from SS_NAN.model import AttResnet101FCN as Seg_Inferrer
 from tf_pose_estimation.src.networks import get_graph_path
 from tf_pose_estimation.src.estimator import TfPoseEstimator as Pose_Inferrer
@@ -98,6 +99,7 @@ QUEUE_WAIT_TIME = 4
 # SS_NAN Parameters #
 #####################
 SS_NAN_MODEL_DIR = './SS_NAN/model/logs'
+LIP_MODEL_PATH = './SS_NAN/AttResnet101FCN_lip_0023.h5'
 
 
 class SegInferenceConfig(SS_NAN.LIP.LIPConfig):
@@ -167,6 +169,12 @@ class SegmentationExtractor(threading.Thread):
         self.run_flag = True
         self.pause_flag = False
         self.batch_size = batch_size
+        self.class_names =  ['BG', 'Hat', 'Hair', 'Glove', 'Sunglasses',
+                             'Upper-clothes', 'Dress', 'Coats', 'Socks',
+                             'Pants','Jumpsuits',  'Scarf', 'Skirt',
+                             'Face', 'Left-arm','Right-arm', 'Left-leg',
+                             'Right-leg', 'Left-shoe', 'Right-shoe']
+
 
     def run(self):
         while self.run_flag:
@@ -186,28 +194,25 @@ class SegmentationExtractor(threading.Thread):
             if frames == []:
                 continue
 
-            logger.debug("Detect-pre: {} s".format(time.time() - start_time))
+            logger.debug("Seg-pre: {} s".format(time.time() - start_time))
             start_time = time.time()
-            """
             try:
-                # Infer default class_index is human
-                iseg_json = self.seg_inferrer.infer(input_img_batch)
+                results = self.seg_inferrer.detect(frames, verbose=0)
+                masks = results[0]['masks']
+                color = visualize.random_colors(N=seg_config.NUM_CLASSES)
+                frame = visualize.apply_mask(frame, masks, color=color,
+                                             class_ids=[v for v in
+                                                        range(1, seg_config.NUM_CLASSES)])
+
             except AttributeError as err:
                 logger.error("Error in iseg inferring: {}".format(err))
-                logger.error("Frame without people may cause this error.")
-                for i in range(self.batch_size):
-                    detected_frame_data = {'frame': frames[i]}
-                    self.segmentation_data_queue.put(detected_frame_data)
-                    continue
 
-            self.put_iseg_batch_results_to_queue(frames, iseg_json)
-            """
             segmentation_data = {'frame': frame,
-                                 'masks': None}
+                                 'masks': masks}
             if self.segmentation_data_queue.full():
                 self.segmentation_data_queue.get()
             self.segmentation_data_queue.put(segmentation_data)
-            logger.debug("Detect: {} s".format(time.time() - start_time))
+            logger.warning("Seg: {} s".format(time.time() - start_time))
 
     def stop(self):
         self.run_flag = False
@@ -483,17 +488,18 @@ class VITONDemo():
         logger.info("Loading pose_inferrer ...")
         self.pose_inferrer = Pose_Inferrer(get_graph_path('mobilenet_thin'),
                                            target_size=(VIDEO_W, VIDEO_H))
-        """
 
-        logger.info("Loading seg_inferrer ...")
+        logger.info("Creating seg_inferrer ...")
         self.seg_inferrer = Seg_Inferrer(mode="inference",
                                          model_dir=SS_NAN_MODEL_DIR,
                                          config=seg_config)
+        logger.info("Loading seg_inferrer weight...")
+        self.seg_inferrer.load_weights(LIP_MODEL_PATH, by_name=True)
 
+        """
         logger.info("Loading viton_inferrer ...")
         self.viton_inferrer = VITON_Inferrer()
         """
-        self.seg_inferrer = None
         self.viton_inferrer = None
 
         self.batch_size = 1
