@@ -1,0 +1,42 @@
+###########################
+# Input Source Parameters #
+###########################
+
+# Set this 0 to use camera as input (try 1/2/3 if 0 fails)
+# Set this to video path to use video as input
+video_source: 0
+# video_source: 'outputs/20180326_0950_iseg_demo_input.mp4'
+
+
+#########################
+# Displaying Parameters #
+#########################
+
+# Set this True to draw bounding box
+draw_bbox: False
+
+# Change this value to adjust transparency of segmentation mask
+transparency_alpha: 0.2
+
+window_name: "UmboCV Demo"
+full_screen: False
+
+# Change this value to modify the display mode
+# display_mode: "Alert"
+display_mode: "Iseg"
+show_id: True
+###################################
+# Writing Video Output parameters #
+###################################
+
+# Set this True to write video output to outputs/
+write_video_input: False
+write_video_output: False
+# Set this to adjust output video frame rate
+video_fps: 5
+# Set this True to skip some frames in video input
+skip_frame: False
+# Set this 3 means only one in three frames would be processed
+# Note that this should be adjusted with input video FPS, 
+# e.g. input_video_fps / skip_frame_ratio = video_fps
+skip_frame_ratio: 3
