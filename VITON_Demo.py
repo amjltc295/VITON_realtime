@@ -9,7 +9,10 @@ from time import gmtime, strftime
 from queue import Queue, Empty
 import yaml
 import os
+
+import SS_NAN.LIP
 from SS_NAN.model import AttResnet101FCN as Seg_Inferrer
+from tf_pose_estimation.src.networks import get_graph_path
 from tf_pose_estimation.src.estimator import TfPoseEstimator as Pose_Inferrer
 from model_zalando_mask_content import create_model as VITON_Inferrer
 
@@ -80,7 +83,7 @@ if WRITE_VIDEO_OUTPUT:
 # Video and Queue I/O Parameters #
 ##################################
 
-VIDEO_SIZE = (VIDEO_CH, VIDEO_H, VIDEO_W) = (3, 360, 640)
+VIDEO_SIZE = (VIDEO_CH, VIDEO_H, VIDEO_W) = (3, 480, 640)
 FRAME_QUEUE_MAX_SIZE = 2
 ISEG_BATCH_SIZE = 1
 QUEUE_WAIT_TIME = 4
@@ -90,6 +93,23 @@ QUEUE_WAIT_TIME = 4
 ############################
 
 # All in configuration.yml
+
+#####################
+# SS_NAN Parameters #
+#####################
+SS_NAN_MODEL_DIR = './SS_NAN/model/logs'
+
+
+class SegInferenceConfig(SS_NAN.LIP.LIPConfig):
+    # Set batch size to 1 since we'll be running inference on
+    # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 1
+    IMAGE_MAX_DIM = 640
+
+
+seg_config = SegInferenceConfig()
+seg_config.display()
 
 
 class FrameReader(threading.Thread):
@@ -182,7 +202,11 @@ class SegmentationExtractor(threading.Thread):
 
             self.put_iseg_batch_results_to_queue(frames, iseg_json)
             """
-            self.segmentation_data_queue.put(frame)
+            segmentation_data = {'frame': frame,
+                                 'masks': None}
+            if self.segmentation_data_queue.full():
+                self.segmentation_data_queue.get()
+            self.segmentation_data_queue.put(segmentation_data)
             logger.debug("Detect: {} s".format(time.time() - start_time))
 
     def stop(self):
@@ -198,11 +222,11 @@ class SegmentationExtractor(threading.Thread):
 class PoseEstimator(threading.Thread):
     """ Thread to do pose estimation. """
 
-    def __init__(self, segmentation_data_queue, pose_data_queue,
+    def __init__(self, segmentation_data_queue, pose_and_seg_data_queue,
                  pose_inferrer):
         super(PoseEstimator, self).__init__()
         self.segmentation_data_queue = segmentation_data_queue
-        self.pose_data_queue = pose_data_queue
+        self.pose_and_seg_data_queue = pose_and_seg_data_queue
         self.pose_inferrer = pose_inferrer
         self.run_flag = True
         self.pause_flag = False
@@ -219,18 +243,20 @@ class PoseEstimator(threading.Thread):
                 logger.warning("PoseEstimator not getting frames")
                 continue
             start_time = time.time()
-            if 'cropped_images' not in segmentation_data:
-                self.pose_data_queue.put(segmentation_data)
+            if 'masks' not in segmentation_data:
+                self.pose_and_seg_data_queue.put(segmentation_data)
+                logger.debug("Pose infer: {} s".format(time.time() - start_time))
                 continue
-            cropped_images = segmentation_data['cropped_images']
 
-            features = (self.pose_inferrer.infer(
-                           patches=cropped_images,
-                           batch_size=len(cropped_images),
-                           workers=4))
-            segmentation_data['features'] = features
-            self.pose_data_queue.put(segmentation_data)
-            logger.debug("Pose infer: {} s".format(time.time() - start_time))
+            frame = segmentation_data['frame']
+            humans = self.pose_inferrer.inference(frame)
+
+            segmentation_data['humans'] = humans
+            frame = Pose_Inferrer.draw_humans(frame, humans, imgcopy=False)
+            segmentation_data['frame'] = frame
+
+            self.pose_and_seg_data_queue.put(segmentation_data)
+            logger.warning("Pose infer: {} s".format(time.time() - start_time))
 
     def stop(self):
         self.run_flag = False
@@ -245,11 +271,10 @@ class PoseEstimator(threading.Thread):
 class VITONWorker(threading.Thread):
     """ Thread to do id-matching between this frame and last frame. """
 
-    def __init__(self, segmentation_data_queue, pose_data_queue,
+    def __init__(self, pose_and_seg_data_queue,
                  viton_data_queue, viton_worker):
         super(VITONWorker, self).__init__()
-        self.segmentation_data_queue = segmentation_data_queue
-        self.pose_data_queue = pose_data_queue
+        self.pose_and_seg_data_queue = pose_and_seg_data_queue
         self.viton_data_queue = viton_data_queue
         self.viton_worker = viton_worker
         self.run_flag = True
@@ -261,19 +286,21 @@ class VITONWorker(threading.Thread):
                 time.sleep(0.1)
                 continue
             try:
-                pose_data = (self.pose_data_queue
+                pose_and_seg_data = (self.pose_and_seg_data_queue
                              .get(timeout=QUEUE_WAIT_TIME))
             except Empty:
                 continue
             start_time = time.time()
 
             # If there are no people in the frame, just display it.
-            if 'cropped_images' not in pose_data:
-                self.viton_data_queue.put(pose_data)
+            if 'cropped_images' not in pose_and_seg_data:
+                self.viton_data_queue.put(pose_and_seg_data)
+                logger.debug("VITON: {} s"
+                             .format(time.time() - start_time))
                 continue
 
             # Re-identification process
-            feature_wrappers = self.bind_ID_to_image_info(pose_data)
+            feature_wrappers = self.bind_ID_to_image_info(pose_and_seg_data)
             self.update_tracker(feature_wrappers)
             # self.match_ID(feature_wrappers,
             #               self.last_re_id_feature_wrappers)
@@ -281,12 +308,12 @@ class VITONWorker(threading.Thread):
             # Update stored ID feature
             self.last_re_id_feature_wrappers = feature_wrappers
 
-            pose_data['re_IDed_feature_wrappers'] = \
+            pose_and_seg_data['re_IDed_feature_wrappers'] = \
                 feature_wrappers
-            pose_data['tracks'] = self.tracker.tracks
-            self.viton_data_queue.put(pose_data)
+            pose_and_seg_data['tracks'] = self.tracker.tracks
+            self.viton_data_queue.put(pose_and_seg_data)
 
-            logger.debug("Re-identification: {} s"
+            logger.debug("VITON: {} s"
                          .format(time.time() - start_time))
 
     def stop(self):
@@ -377,7 +404,7 @@ class Displayer(threading.Thread):
 
         while self.run_flag:
             if self.pause_flag:
-                k = cv2.waitKey(25)
+                k = cv2.waitKey(1)
                 if k == ord('s'):
                     self.threadManager.restart()
                     logger.info("Restarted")
@@ -386,7 +413,7 @@ class Displayer(threading.Thread):
                 time.sleep(0.1)
                 continue
             start_time_fps = time.time()
-            k = cv2.waitKey(25)
+            k = cv2.waitKey(1)
             if k == ord('p'):
                 self.threadManager.pause()
                 logger.info("Paused")
@@ -453,14 +480,21 @@ class VITONDemo():
     whole process. """
 
     def __init__(self, video_source):
-        logger.debug("Loading seg_inferrer ...")
-        self.seg_inferrer = Seg_Inferrer()
+        logger.info("Loading pose_inferrer ...")
+        self.pose_inferrer = Pose_Inferrer(get_graph_path('mobilenet_thin'),
+                                           target_size=(VIDEO_W, VIDEO_H))
+        """
 
-        logger.debug("Loading pose_inferrer ...")
-        self.pose_inferrer = Pose_Inferrer()
+        logger.info("Loading seg_inferrer ...")
+        self.seg_inferrer = Seg_Inferrer(mode="inference",
+                                         model_dir=SS_NAN_MODEL_DIR,
+                                         config=seg_config)
 
-        logger.debug("Loading viton_inferrer ...")
+        logger.info("Loading viton_inferrer ...")
         self.viton_inferrer = VITON_Inferrer()
+        """
+        self.seg_inferrer = None
+        self.viton_inferrer = None
 
         self.batch_size = 1
         self.frame_queue_maxsize = FRAME_QUEUE_MAX_SIZE
@@ -472,8 +506,8 @@ class VITONDemo():
             self.batch_size = 1
 
         self.frame_queue = Queue(maxsize=self.frame_queue_maxsize)
-        self.segmentation_data_queue = Queue()
-        self.pose_data_queue = Queue()
+        self.segmentation_data_queue = Queue(maxsize=self.frame_queue_maxsize)
+        self.pose_and_seg_data_queue = Queue()
         self.viton_data_queue = Queue()
 
         self.frameReader = FrameReader(self.cap, self.frame_queue, self)
@@ -482,10 +516,9 @@ class VITONDemo():
                                                   self.seg_inferrer,
                                                   self.batch_size)
         self.poseEstimator = PoseEstimator(self.segmentation_data_queue,
-                                           self.pose_data_queue,
+                                           self.pose_and_seg_data_queue,
                                            self.pose_inferrer)
-        self.vitonWorker = VITONWorker(self.segmentation_data_queue,
-                                       self.pose_data_queue,
+        self.vitonWorker = VITONWorker(self.pose_and_seg_data_queue,
                                        self.viton_data_queue,
                                        self.viton_inferrer)
         self.displayer = Displayer(self.viton_data_queue,
