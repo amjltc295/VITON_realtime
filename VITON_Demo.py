@@ -245,7 +245,7 @@ class PoseEstimator(threading.Thread):
                 segmentation_data = (self.segmentation_data_queue
                                      .get(timeout=QUEUE_WAIT_TIME))
             except Empty:
-                logger.warning("PoseEstimator not getting frames")
+                # logger.warning("PoseEstimator not getting frames")
                 continue
             start_time = time.time()
             if 'masks' not in segmentation_data:
@@ -495,6 +495,7 @@ class VITONDemo():
                                          config=seg_config)
         logger.info("Loading seg_inferrer weight...")
         self.seg_inferrer.load_weights(LIP_MODEL_PATH, by_name=True)
+        self.seg_inferrer.keras_model._make_predict_function()
 
         """
         logger.info("Loading viton_inferrer ...")
