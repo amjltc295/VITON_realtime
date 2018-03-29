@@ -7,7 +7,7 @@ import skimage.io
 import sklearn.metrics as metrics
 from .config import Config
 from .utils import Dataset
-from  .model import AttResnet101FCN
+from .model import AttResnet101FCN
 
 # Root directory of the project
 ROOT_DIR = os.getcwd()

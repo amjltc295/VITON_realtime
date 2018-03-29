@@ -37,7 +37,11 @@ import keras.initializers as KI
 import keras.engine as KE
 import keras.models as KM
 import scipy.ndimage
-import utils
+from .utils import (batch_slice, apply_box_deltas,
+                    non_max_suppression, resize_corp_image_mask,
+                    resize_mask,
+                    unmold_mask_superpixel_filter)
+from .utils import resize_image as utils_resize_image
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
@@ -250,7 +254,7 @@ class SuperPixelFilterLayer(KE.Layer):
             r=tf.gather(x/tf.expand_dims(weights,1),y)
             r=tf.reshape(r,[s_shape[1],s_shape[2],channels])
             return r
-        r_feature_map = utils.batch_slice([feature_map,superpixel_map],superpixel_filter,self.config.IMAGES_PER_GPU)
+        r_feature_map = batch_slice([feature_map,superpixel_map],superpixel_filter,self.config.IMAGES_PER_GPU)
         #result = tf.image.resize_bilinear(r_feature_map,[f_shape[1],f_shape[2]])
         return r_feature_map
     def compute_output_shape(self, input_shape):
@@ -298,7 +302,7 @@ def refine_detections(rois, probs, deltas, window, config):
     deltas_specific = deltas[np.arange(deltas.shape[0]), class_ids]
     # Apply bounding box deltas
     # Shape: [boxes, (y1, x1, y2, x2)] in normalized coordinates
-    refined_rois = utils.apply_box_deltas(
+    refined_rois = apply_box_deltas(
         rois, deltas_specific * config.BBOX_STD_DEV)
     # Convert coordiates to image domain
     # TODO: better to keep them normalized until later
@@ -327,7 +331,7 @@ def refine_detections(rois, probs, deltas, window, config):
         # Pick detections of this class
         ixs = np.where(pre_nms_class_ids == class_id)[0]
         # Apply NMS
-        class_keep = utils.non_max_suppression(
+        class_keep = non_max_suppression(
             pre_nms_rois[ixs], pre_nms_scores[ixs],
             config.DETECTION_NMS_THRESHOLD)
         # Map indicies
@@ -520,18 +524,18 @@ def load_image_gt(dataset, config, image_id, augment=False,
     mask = dataset.load_mask(image_id)
     shape = image.shape
     if augment:
-        image,mask = utils.resize_corp_image_mask(image, np.expand_dims(mask,-1), config,min_dim=config.IMAGE_MIN_DIM,
+        image,mask = resize_corp_image_mask(image, np.expand_dims(mask,-1), config,min_dim=config.IMAGE_MIN_DIM,
             max_dim=config.IMAGE_MAX_DIM,
             padding=config.IMAGE_PADDING)
         mask = np.squeeze(mask,-1)
         window =[0,0,config.IMAGE_MAX_DIM,config.IMAGE_MAX_DIM]
     else:
-        image, window, scale, padding = utils.resize_image(
+        image, window, scale, padding = utils_resize_image(
             image,
             min_dim=config.IMAGE_MIN_DIM,
             max_dim=config.IMAGE_MAX_DIM,
             padding=config.IMAGE_PADDING,augment=False)
-        mask = utils.resize_mask(np.expand_dims(mask,-1), scale, padding)
+        mask = resize_mask(np.expand_dims(mask,-1), scale, padding)
         mask = np.squeeze(mask,-1)
     # Random horizontal flips.
     if augment:
@@ -1167,7 +1171,7 @@ class Resnet101FCN():
         for image in images:
             # Resize image to fit the model expected size
             # TODO: move resizing to mold_image()
-            molded_image, window, scale, padding = utils.resize_image(
+            molded_image, window, scale, padding = utils_resize_image(
                 image,
                 min_dim=self.config.IMAGE_MIN_DIM,
                 max_dim=self.config.IMAGE_MAX_DIM,
@@ -1239,7 +1243,7 @@ class Resnet101FCN():
             full_masks = []
             for i in range(N):
                 # Convert neural network mask to full size mask
-                full_mask = utils.unmold_mask_superpixel_filter(masks[i], boxes[i], image_shape,superpixel_map)
+                full_mask = unmold_mask_superpixel_filter(masks[i], boxes[i], image_shape,superpixel_map)
                 full_masks.append(full_mask)
             full_masks = np.stack(full_masks, axis=-1)\
                         if full_masks else np.empty((0,) + masks.shape[1:3])
