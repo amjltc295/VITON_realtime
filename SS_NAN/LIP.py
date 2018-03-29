@@ -5,9 +5,9 @@ import time
 import numpy as np
 import skimage.io
 import sklearn.metrics as metrics
-from config import Config
-import utils
-import model as modellib
+from .config import Config
+from .utils import Dataset
+from  .model import AttResnet101FCN
 
 # Root directory of the project
 ROOT_DIR = os.getcwd()
@@ -17,7 +17,7 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs/AttResnet101FCN")
-FCN=modellib.AttResnet101FCN
+FCN = AttResnet101FCN
 
 
 
@@ -49,7 +49,7 @@ class LIPConfig(Config):
 #  Dataset
 ############################################################
 
-class LIPDataset(utils.Dataset):
+class LIPDataset(Dataset):
     def load_LIP(self, dataset_dir, subset):
         """Load a subset of the COCO dataset.
         dataset_dir: The root directory of the COCO dataset.
