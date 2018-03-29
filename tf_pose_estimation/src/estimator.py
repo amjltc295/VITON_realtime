@@ -8,8 +8,8 @@ import numpy as np
 import tensorflow as tf
 from scipy.ndimage import maximum_filter, gaussian_filter
 
-import common
-from common import CocoPairsNetwork, CocoPairs, CocoPart
+from .common import (CocoPairsNetwork, CocoPairs, CocoPart,
+                    CocoColors, CocoPairsRender)
 
 logger = logging.getLogger('TfPoseEstimator')
 logger.setLevel(logging.INFO)
@@ -295,21 +295,21 @@ class TfPoseEstimator:
         centers = {}
         for human in humans:
             # draw point
-            for i in range(common.CocoPart.Background.value):
+            for i in range(CocoPart.Background.value):
                 if i not in human.body_parts.keys():
                     continue
 
                 body_part = human.body_parts[i]
                 center = (int(body_part.x * image_w + 0.5), int(body_part.y * image_h + 0.5))
                 centers[i] = center
-                cv2.circle(npimg, center, 3, common.CocoColors[i], thickness=3, lineType=8, shift=0)
+                cv2.circle(npimg, center, 3, CocoColors[i], thickness=3, lineType=8, shift=0)
 
             # draw line
-            for pair_order, pair in enumerate(common.CocoPairsRender):
+            for pair_order, pair in enumerate(CocoPairsRender):
                 if pair[0] not in human.body_parts.keys() or pair[1] not in human.body_parts.keys():
                     continue
 
-                npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
+                npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], CocoColors[pair_order], 3)
 
         return npimg
 
