@@ -98,7 +98,7 @@ class VITONDemo():
         self.image_holder = \
             tf.placeholder(tf.float32,
                            shape=[self.batch_size, 256, 192, 3])
-        self.prod_self.image_holder = tf.placeholder(
+        self.prod_image_holder = tf.placeholder(
                 tf.float32, shape=[self.batch_size, 256, 192, 3])
         self.body_segment_holder = tf.placeholder(
                 tf.float32, shape=[self.batch_size, 256, 192, 1])
@@ -109,7 +109,7 @@ class VITONDemo():
         self.pose_map_holder = \
             tf.placeholder(tf.float32,
                            shape=[self.batch_size, 256, 192, 18])
-        self.viton_worker = create_model(self.prod_self.image_holder,
+        self.viton_worker = create_model(self.prod_image_holder,
                                          self.body_segment_holder,
                                          self.skin_segment_holder,
                                          self.pose_map_holder,
@@ -216,7 +216,7 @@ class VITONDemo():
             pose_raws[i] = pose_raw
         feed_dict = {
                 self.image_holder: images,
-                self.prod_self.image_holder: prod_images,
+                self.prod_image_holder: prod_images,
                 self.body_segment_holder: body_segments,
                 self.skin_segment_holder: skin_segments,
                 self.prod_segment_holder: prod_segments,
