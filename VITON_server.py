@@ -120,15 +120,20 @@ seg_config.display()
 #################
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = socket.gethostname()
-print(host)
-serversocket.bind(('', 8089))
+logger.debug(host)
+serversocket.bind(('140.112.29.182', 8089))
 serversocket.listen(2)  # become a server socket, maximum 5 connections
+
 
 while True:
     logger.info("Waiting for connection ..")
     connection, address = serversocket.accept()
-    logger.indo("{} connected".format(address))
+    logger.info("{} connected".format(address))
     break
+
+msg = connection.recv(100000)
+logger.info(msg)
+
 
 class FrameReader(threading.Thread):
     """ Thread to read frame from webcam.
@@ -150,9 +155,21 @@ class FrameReader(threading.Thread):
                 continue
             start_time = time.time()
             count += 1
-
-            buf = connection.recv(100000000)
+            buff = []
+            while True:
+                packet = connection.recv(921780)
+                if packet == b'': break
+                if not packet: break
+                print(len(packet))
+                buff.append(packet)
+            frame = pickle.loads(b"".join(buff))
+            """
+            buf = connection.recv(921780)
+            print(buf)
+            print(len(buf))
             frame = pickle.loads(buf)
+            """
+            frame = frame['frame']
             if frame is None:
                 logger.warning("Not getiing frames")
                 self.stop()
@@ -363,17 +380,19 @@ class VITONDemo():
         self.pose_inferrer = Pose_Inferrer(get_graph_path('mobilenet_thin'),
                                            target_size=(VIDEO_W, VIDEO_H))
 
+        """
         logger.info("Creating seg_inferrer ...")
         self.seg_inferrer = Seg_Inferrer(mode="inference",
                                          model_dir=SS_NAN_MODEL_DIR,
                                          config=seg_config)
         logger.info("Loading seg_inferrer weight...")
         self.seg_inferrer.load_weights(LIP_MODEL_PATH, by_name=True)
+        self.seg_inferrer.keras_model._make_predict_function()
 
-        """
         logger.info("Loading viton_inferrer ...")
         self.viton_inferrer = VITON_Inferrer()
         """
+        self.seg_inferrer = None
         self.viton_inferrer = None
 
         self.batch_size = 1
@@ -381,9 +400,6 @@ class VITONDemo():
         self.cap = cv2.VideoCapture(video_source)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, VIDEO_W)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, VIDEO_H)
-        if video_source not in [0, 1]:
-            self.frame_queue_maxsize = 0
-            self.batch_size = 1
 
         self.frame_queue = Queue(maxsize=self.frame_queue_maxsize)
         self.segmentation_data_queue = Queue(maxsize=self.frame_queue_maxsize)
@@ -401,6 +417,7 @@ class VITONDemo():
         self.vitonWorker = VITONWorker(self.pose_and_seg_data_queue,
                                        self.viton_data_queue,
                                        self.viton_inferrer)
+        connection.send(b'start')
 
     def run(self):
         logger.debug("Threads started")
