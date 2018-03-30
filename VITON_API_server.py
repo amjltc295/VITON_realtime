@@ -6,6 +6,8 @@ import cv2
 import logging
 from tf_pose_estimation.src.networks import get_graph_path
 from tf_pose_estimation.src.estimator import TfPoseEstimator as Pose_Inferrer
+from tf_pose_estimation.src.common import (CocoPairsNetwork, CocoPairs, CocoPart,
+                                           CocoColors, CocoPairsRender)
 import SS_NAN.LIP
 import SS_NAN.visualize as visualize
 from SS_NAN.model import AttResnet101FCN as Seg_Inferrer
@@ -38,6 +40,32 @@ seg_config = SegInferenceConfig()
 seg_config.display()
 
 
+def draw_humans(npimg, humans, imgcopy=False):
+    if imgcopy:
+        npimg = np.copy(npimg)
+    image_h, image_w = npimg.shape[:2]
+    centers = {}
+    for human in humans:
+        # draw point
+        for i in range(CocoPart.Background.value):
+            if i not in human.body_parts.keys():
+                continue
+
+            body_part = human.body_parts[i]
+            center = (int(body_part.x * image_w + 0.5), int(body_part.y * image_h + 0.5))
+            centers[i] = center
+            cv2.circle(npimg, center, 3, CocoColors[i], thickness=3, lineType=8, shift=0)
+
+        # draw line
+        for pair_order, pair in enumerate(CocoPairsRender):
+            if pair[0] not in human.body_parts.keys() or pair[1] not in human.body_parts.keys():
+                continue
+
+            npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], CocoColors[pair_order], 3)
+    return centers
+    return npimg
+
+
 class VITONDemo():
     def __init__(self):
         logger.info("Loading pose_inferrer ...")
@@ -50,15 +78,17 @@ class VITONDemo():
         logger.info("Loading seg_inferrer weight...")
         self.seg_inferrer.load_weights(LIP_MODEL_PATH, by_name=True)
         self.seg_inferrer.keras_model._make_predict_function()
+        logger.info("Initialization done")
 
     def pose_infer(self, frame):
         humans = self.pose_inferrer.inference(frame)
-        frame = Pose_Inferrer.draw_humans(frame, humans, imgcopy=False)
+        frame = draw_humans(frame, humans, imgcopy=False)
         return frame
 
     def seg_infer(self, frame):
         results = self.seg_inferrer.detect([frame], verbose=0)
         masks = results[0]['masks']
+        return masks
         color = visualize.random_colors(N=seg_config.NUM_CLASSES)
         frame = visualize.apply_mask(frame, masks, color=color,
                                      class_ids=[v for v in
@@ -70,13 +100,32 @@ demo = VITONDemo()
 app = Flask(__name__)
 
 
-@app.route("/", methods=["POST"])
+@app.route("/", methods=["GET"])
 def home():
+    return "Welcome"
+
+
+@app.route("/pose", methods=["POST"])
+def pose():
     img = Image.open(request.files['files'])
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = demo.pose_infer(img)
-    img = demo.seg_infer(img)
-    img_pickle = pickle.dumps(img)
+    humans = demo.pose_infer(img)
+    """
+    import pdb
+    pdb.set_trace()
+    """
+    humans_pickle = pickle.dumps(humans)
 
-    return img_pickle
+    return humans_pickle
+
+
+@app.route("/seg", methods=["POST"])
+def segment():
+    img = Image.open(request.files['files'])
+    img = np.array(img)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    masks = demo.pose_infer(img)
+    masks_pickle = pickle.dumps(masks)
+
+    return masks_pickle
