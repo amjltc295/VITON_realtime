@@ -55,17 +55,7 @@ OUT_WINDOW_NAME = 'VITON'
 SEG_WINDOW_NAME = 'Segmentation'
 POSE_WINDOW_NAME = 'Pose'
 ORIGIN_WINDOW_NAME = 'input'
-WINDOWS = [ORIGIN_WINDOW_NAME,
-           POSE_WINDOW_NAME,
-           SEG_WINDOW_NAME,
-           OUT_WINDOW_NAME]
-"""
-for i, window in enumerate(WINDOWS):
-    if i != 0:
-        continue
-    cv2.namedWindow(window)
-    cv2.moveWindow(window, i*480, 20)
-"""
+OUT2_WINDOW_NAME = 'Attached'
 
 ##################
 # Queue Settings #
@@ -78,6 +68,7 @@ FRAME_QUEUE_MAX_SIZE = 5
 ###################
 TMP_IMAGE_NAME = 'tmp.jpg'
 TMP_OUTPUT_NAME = 'tmp_out.jpg'
+TMP_OUTPUT_NAME2 = 'tmp_out2.jpg'
 TMP_DATA_PICKLE_NAME = 'pose_and_seg_data.pickle'
 VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
 VIDEO_SOURCE = 1
@@ -304,10 +295,12 @@ class VITONWorker(threading.Thread):
     """ Thread to do id-matching between this frame and last frame. """
 
     def __init__(self, pose_and_seg_data_queue,
-                 viton_frame_queue):
+                 viton_frame_queue,
+                 viton_frame_queue2):
         super(VITONWorker, self).__init__()
         self.pose_and_seg_data_queue = pose_and_seg_data_queue
         self.viton_frame_queue = viton_frame_queue
+        self.viton_frame_queue2 = viton_frame_queue2
         self.run_flag = True
         self.pause_flag = False
         self.prod_name = './test_product.jpg'
@@ -509,7 +502,11 @@ class VITONWorker(threading.Thread):
             url = 'http://localhost:5000/viton'
             requests.get(url)
             output = cv2.imread(TMP_OUTPUT_NAME)
+            url = 'http://localhost:5000/attach'
+            requests.get(url)
+            output2 = cv2.imread(TMP_OUTPUT_NAME2)
             self.viton_frame_queue.put(output)
+            self.viton_frame_queue2.put(output2)
             logger.info("VITON: {} s"
                         .format(time.time() - start_time))
 
@@ -530,12 +527,14 @@ class Displayer(threading.Thread):
                  pose_frame_queue,
                  segment_frame_queue,
                  viton_frame_queue,
+                 viton_frame_queue2,
                  threadManager):
         super(Displayer, self).__init__()
         self.frame_queue = frame_queue
         self.pose_frame_queue = pose_frame_queue
         self.segment_frame_queue = segment_frame_queue
         self.viton_frame_queue = viton_frame_queue
+        self.viton_frame_queue2 = viton_frame_queue2
         self.threadManager = threadManager
         self.run_flag = True
         self.pause_flag = False
@@ -583,6 +582,15 @@ class Displayer(threading.Thread):
                 cv2.imshow(OUT_WINDOW_NAME, viton_img)
                 cv2.namedWindow(OUT_WINDOW_NAME)
                 cv2.moveWindow(OUT_WINDOW_NAME, 1440, 20)
+            except Empty:
+                pass
+
+            # Show Attached
+            try:
+                attached_img = self.viton_frame_queue2.get_nowait()
+                cv2.imshow(OUT2_WINDOW_NAME, attached_img)
+                cv2.namedWindow(OUT2_WINDOW_NAME)
+                cv2.moveWindow(OUT2_WINDOW_NAME, 0, 620)
             except Empty:
                 pass
 
@@ -635,6 +643,7 @@ class VITONDemo():
         self.pose_frame_queue = Queue()
         self.segment_frame_queue = Queue()
         self.viton_frame_queue = Queue()
+        self.viton_frame_queue2 = Queue()
 
         self.frameReader = FrameReader(self.cap, self.frame_queue,
                                        self.process_frame_queue, self)
@@ -646,11 +655,13 @@ class VITONDemo():
                                            self.pose_and_seg_data_queue,
                                            self.pose_frame_queue)
         self.vitonWorker = VITONWorker(self.pose_and_seg_data_queue,
-                                       self.viton_frame_queue)
+                                       self.viton_frame_queue,
+                                       self.viton_frame_queue2)
         self.displayer = Displayer(self.frame_queue,
                                    self.pose_frame_queue,
                                    self.segment_frame_queue,
                                    self.viton_frame_queue,
+                                   self.viton_frame_queue2,
                                    self)
 
     def run(self):

@@ -12,6 +12,7 @@ from utils import (extract_pose_keypoints,
                    extract_pose_map,
                    extract_segmentation,
                    process_segment_map)
+from flat_attach_clothes import flat_attach_clothes
 # import pdb
 
 LOGGING_LEVEL = logging.INFO
@@ -225,6 +226,19 @@ def viton():
     output *= 255
     cv2.imwrite('tmp_out.jpg', output)
 
+    return "Done"
+
+
+@app.route("/attach", methods=["GET"])
+def attach():
+    logger.info("Attatch ..")
+    pose_and_seg_data = pickle.load(open('pose_and_seg_data.pickle', 'rb'))
+    masks = pose_and_seg_data['masks']
+    img = pose_and_seg_data['frame']
+    prod_img = np.array(Image.open(demo.prod_name))
+    attached_img = flat_attach_clothes(masks, img, prod_img)
+    attached_img = cv2.cvtColor(attached_img, cv2.COLOR_BGR2RGB)
+    cv2.imwrite('tmp_out2.jpg', attached_img)
     return "Done"
 
 
