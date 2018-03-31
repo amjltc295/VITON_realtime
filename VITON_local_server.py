@@ -1,9 +1,10 @@
-from flask import Flask
+from flask import Flask, request
 from PIL import Image
 import pickle
 import numpy as np
 import cv2
 import logging
+import os
 import tensorflow as tf
 import scipy.io as sio
 from model_zalando_mask_content import create_model
@@ -37,6 +38,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 class VITONDemo():
     def __init__(self):
+        self.prod_name = './test_product.jpg'
         logger.info("Loading VITON_worker ...")
         self.batch_size = 1
         self.image_holder = \
@@ -69,6 +71,13 @@ class VITONDemo():
         saver.restore(self.sess, checkpoint)
 
         logger.info("Initialization done")
+
+    def set_prod_name(self, name):
+        name = './inputs/' + str(name)
+        if os.path.exists(name):
+            self.prod_name = name
+            return True
+        return False
 
     def _process_image(self, image, prod_image,
                        pose_raw, segment_raw,  sess,
@@ -201,9 +210,6 @@ def home():
     return "Welcome"
 
 
-prod_name = './test_product.jpg'
-
-
 @app.route("/viton", methods=["GET"])
 def viton():
     logger.info("VITON inferring ...")
@@ -211,7 +217,7 @@ def viton():
     poses = pose_and_seg_data['poses']
     masks = pose_and_seg_data['masks']
     img = pose_and_seg_data['frame']
-    prod_img = np.array(Image.open(prod_name))
+    prod_img = np.array(Image.open(demo.prod_name))
     output = demo.viton_infer(img, prod_img, poses, masks)
     output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
     output = cv2.resize(output, (img.shape[1], img.shape[0]))
@@ -220,3 +226,14 @@ def viton():
     cv2.imwrite('tmp_out.jpg', output)
 
     return "Done"
+
+
+@app.route("/change", methods=["POST"])
+def change():
+    name = request.data.decode("utf-8")
+    if not demo.set_prod_name(name):
+        msg = "No cloth name {}".format(name)
+    else:
+        msg = "Cloth changed to {}".format(name)
+    logger.info(msg)
+    return msg

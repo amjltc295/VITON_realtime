@@ -88,6 +88,17 @@ VITON_OUTPUT_DIR = 'outputs'
 if not os.path.exists(VITON_OUTPUT_DIR):
     os.makedirs(VITON_OUTPUT_DIR)
 
+###################
+# Server Settings #
+###################
+SEG_SERVER = 'http://140.112.29.182:8000'
+SEG_URL = SEG_SERVER + '/seg'
+POSE_SERVER = 'http://140.112.29.182:8000'
+POSE_URL = POSE_SERVER + '/pose'
+VITON_SERVER = 'http://localhost:5000'
+VITON_URL = VITON_SERVER + '/viton'
+CHANGE_CLOTH_URL = VITON_SERVER + '/change'
+
 
 class FrameReader(threading.Thread):
     """ Thread to read frame from webcam. """
@@ -107,6 +118,7 @@ class FrameReader(threading.Thread):
         while self.run_flag:
             count += 1
             ret, frame = self.cap.read()
+            frame = cv2.resize(frame, (480, 360))
             if VIDEO_SOURCE in [0, 1]:
                 frame = np.rot90(frame, 3)
             if self.frame_queue.full():
@@ -585,6 +597,12 @@ class Displayer(threading.Thread):
             elif k == ord('c'):
                 self.threadManager.frameReader.put_process()
                 logger.info("Put process")
+            elif k == ord('a'):
+                r = requests.post(CHANGE_CLOTH_URL, data="a.jpg")
+                logger.info(r.content)
+            elif k == ord('s'):
+                r = requests.post(CHANGE_CLOTH_URL, data="s.jpg")
+                logger.info(r.content)
 
     def stop(self):
         self.run_flag = False
