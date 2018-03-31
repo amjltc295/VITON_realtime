@@ -34,7 +34,7 @@ tf.app.flags.DEFINE_integer('w', 1, 'Number of workers')
 tf.app.flags.DEFINE_integer('timeout', 120, 'Server timeout')
 tf.logging.set_verbosity(tf.logging.INFO)
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 
 class VITONDemo():
@@ -204,41 +204,47 @@ def draw_segment_mask(frame, masks):
 
 
 demo = VITONDemo()
+OUT_WINDOW_NAME = 'VITON'
+SEG_WINDOW_NAME = 'Segmentation'
+ORIGIN_WINDOW_NAME = 'input'
 
 while 1:
     t = time.time()
     ret, img = cap.read()
-    img_name = 'data/women_top/000001_0.jpg'
-    img_name = 'test_person2.jpg'
-    img_name = 'test_person.jpg'
-    prod_name = 'data/women_top/001744_1.jpg'
-    # img = cv2.imread(img_name)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_name = 'tmp.jpg'
-    cv2.imwrite(img_name, img)
-
-    # Get pose
-    logger.info("Getting pose ..")
-    files = {'files': open(img_name, 'rb')}
-    url = 'http://140.112.29.182:8000/pose'
-    r = requests.post(url, files=files)
-    poses = pickle.loads(r.content)
-
-    # Get seg masks
-    logger.info("Getting seg ..")
-    files = {'files': open(img_name, 'rb')}
-    url = 'http://140.112.29.182:8000/seg'
-    r = requests.post(url, files=files)
-    masks = pickle.loads(r.content)
-    masked_img = draw_segment_mask(img.copy(), masks)
-    cv2.imshow('a', masked_img)
-
-    prod_img = np.array(Image.open(prod_name))
-    output = demo.viton_infer(img, prod_img, poses, masks)
-    output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
-    output = output / 2.0 + 0.5
-    cv2.imshow('b', output)
-    print(1 / (time.time() - t))
-    k = cv2.waitKey(100)
+    img = np.rot90(img, 3)
+    k = cv2.waitKey(25) & 0xFF
     if k == ord('q'):
         break
+    elif k == ord('c'):
+        img_name = 'data/women_top/000001_0.jpg'
+        img_name = 'test_person2.jpg'
+        img_name = 'test_person.jpg'
+        prod_name = 'data/women_top/001744_1.jpg'
+        # img = cv2.imread(img_name)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_name = 'tmp.jpg'
+        cv2.imwrite(img_name, img)
+
+        # Get pose
+        logger.info("Getting pose ..")
+        files = {'files': open(img_name, 'rb')}
+        url = 'http://140.112.29.182:8000/pose'
+        r = requests.post(url, files=files)
+        poses = pickle.loads(r.content)
+
+        # Get seg masks
+        logger.info("Getting seg ..")
+        files = {'files': open(img_name, 'rb')}
+        url = 'http://140.112.29.182:8000/seg'
+        r = requests.post(url, files=files)
+        masks = pickle.loads(r.content)
+        masked_img = draw_segment_mask(img.copy(), masks)
+        cv2.imshow(SEG_WINDOW_NAME, masked_img)
+
+        prod_img = np.array(Image.open(prod_name))
+        output = demo.viton_infer(img, prod_img, poses, masks)
+        output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
+        output = output / 2.0 + 0.5
+        cv2.imshow(OUT_WINDOW_NAME, output)
+        print(1 / (time.time() - t))
+    cv2.imshow(ORIGIN_WINDOW_NAME, img)
