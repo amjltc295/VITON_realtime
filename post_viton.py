@@ -14,6 +14,8 @@ from utils import (extract_pose_keypoints,
 import SS_NAN.visualize as visualize
 from PIL import Image
 import pdb
+import os
+from time import gmtime, strftime, sleep
 
 LOGGING_LEVEL = logging.INFO
 logging.basicConfig(
@@ -34,7 +36,11 @@ tf.app.flags.DEFINE_integer('w', 1, 'Number of workers')
 tf.app.flags.DEFINE_integer('timeout', 120, 'Server timeout')
 tf.logging.set_verbosity(tf.logging.INFO)
 
-cap = cv2.VideoCapture(1)
+VIDEO_SOURCE = 1
+VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
+cap = cv2.VideoCapture(VIDEO_SOURCE)
+RECORD_VIDEO = True if VIDEO_SOURCE in [0, 1] else True
+RECORD_IMAGES = True
 
 
 class VITONDemo():
@@ -207,11 +213,28 @@ demo = VITONDemo()
 OUT_WINDOW_NAME = 'VITON'
 SEG_WINDOW_NAME = 'Segmentation'
 ORIGIN_WINDOW_NAME = 'input'
+VITON_OUTPUT_DIR = 'outputs'
+if not os.path.exists(VITON_OUTPUT_DIR):
+    os.makedirs(VITON_OUTPUT_DIR)
 
+if RECORD_VIDEO:
+    current_time = strftime("%Y%m%d_%H%M", gmtime())
+    output_dir = './inputs'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    VIDEO_INPUT_FILENAME = ('{}/{}_input.mp4'
+                            .format(output_dir, current_time))
+    fourcc = cv2.VideoWriter_fourcc(*'X264')
+    ret, img = cap.read()
+    video_writer = cv2.VideoWriter(VIDEO_INPUT_FILENAME,
+                                   fourcc, 30,
+                                   (img.shape[0], img.shape[1]))
+    logger.info("Writing video to {}".format(VIDEO_INPUT_FILENAME))
 while 1:
     t = time.time()
     ret, img = cap.read()
-    img = np.rot90(img, 3)
+    if VIDEO_SOURCE in [0, 1]:
+        img = np.rot90(img, 3)
     k = cv2.waitKey(25) & 0xFF
     if k == ord('q'):
         break
@@ -220,6 +243,7 @@ while 1:
         img_name = 'test_person2.jpg'
         img_name = 'test_person.jpg'
         prod_name = 'data/women_top/001744_1.jpg'
+        prod_name = './test_product.jpg'
         # img = cv2.imread(img_name)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_name = 'tmp.jpg'
@@ -244,7 +268,32 @@ while 1:
         prod_img = np.array(Image.open(prod_name))
         output = demo.viton_infer(img, prod_img, poses, masks)
         output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
+        output = cv2.resize(output, (img.shape[1], img.shape[0]))
         output = output / 2.0 + 0.5
         cv2.imshow(OUT_WINDOW_NAME, output)
+        if RECORD_IMAGES:
+            current_time = strftime("%Y%m%d_%H%M%s", gmtime())
+            output = output * 255
+            masked_img = cv2.cvtColor(masked_img, cv2.COLOR_RGB2BGR)
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            with open("{}/{}_mask.jpg"
+                      .format(VITON_OUTPUT_DIR, current_time), 'wb') as f:
+                pickle.dump(masks, f)
+            cv2.imwrite("{}/{}_seg.jpg"
+                        .format(VITON_OUTPUT_DIR, current_time), masked_img)
+            cv2.imwrite("{}/{}.jpg"
+                        .format(VITON_OUTPUT_DIR, current_time), img)
+            cv2.imwrite("{}/{}_viton.jpg"
+                        .format(VITON_OUTPUT_DIR, current_time), output)
+        pdb.set_trace()
+        # res = cv2.bitwise_and(img, img, mask=masked_img)
         print(1 / (time.time() - t))
     cv2.imshow(ORIGIN_WINDOW_NAME, img)
+    fourcc = cv2.VideoWriter_fourcc(*'X264')
+    if RECORD_VIDEO:
+        video_writer.write(img)
+    else:
+        sleep(0.2)
+if RECORD_VIDEO:
+    video_writer.release()
+cap.release()
