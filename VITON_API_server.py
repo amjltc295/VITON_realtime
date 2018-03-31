@@ -35,6 +35,9 @@ LIP_MODEL_PATH = './SS_NAN/AttResnet101FCN_lip_0023.h5'
 # VITON Parameters #
 ####################
 FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_string('b', '', 'Server address')
+tf.app.flags.DEFINE_integer('w', 1, 'Number of workers')
+tf.app.flags.DEFINE_integer('timeout', 120, 'Server timeout')
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
@@ -85,6 +88,7 @@ class VITONDemo():
         logger.info("Loading pose_inferrer ...")
         self.pose_inferrer = Pose_Inferrer(get_graph_path('mobilenet_thin'),
                                            target_size=(VIDEO_W, VIDEO_H))
+        """
         logger.info("Creating seg_inferrer ...")
         self.seg_inferrer = Seg_Inferrer(mode="inference",
                                          model_dir=SS_NAN_MODEL_DIR,
@@ -92,8 +96,8 @@ class VITONDemo():
         logger.info("Loading seg_inferrer weight...")
         self.seg_inferrer.load_weights(LIP_MODEL_PATH, by_name=True)
         self.seg_inferrer.keras_model._make_predict_function()
+        """
         logger.info("Loading VITON_worker ...")
-        pdb.set_trace()
         self.batch_size = 1
         self.image_holder = \
             tf.placeholder(tf.float32,
@@ -117,12 +121,13 @@ class VITONDemo():
                                          self.image_holder)
         saver = tf.train.Saver()
         self.sess = tf.Session()
-        logger.info("loading model from checkpoint")
-        checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint)
-        if checkpoint is None:
-            checkpoint = FLAGS.checkpoint
-        logger.info("Checkpoint: {}".format(checkpoint))
-        saver.restore(self.sess, checkpoint)
+        with self.sess:
+            logger.info("loading model from checkpoint")
+            checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint)
+            if checkpoint is None:
+                checkpoint = FLAGS.checkpoint
+            logger.info("Checkpoint: {}".format(checkpoint))
+            saver.restore(self.sess, checkpoint)
 
         logger.info("Initialization done")
 
