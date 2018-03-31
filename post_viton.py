@@ -6,6 +6,7 @@ import time
 import logging
 import tensorflow as tf
 from model_zalando_mask_content import create_model
+from tf_pose_estimation.src.common import (CocoColors, CocoPairsRender)
 import scipy.io as sio
 from utils import (extract_pose_keypoints,
                    extract_pose_map,
@@ -40,6 +41,7 @@ VIDEO_SOURCE = 1
 VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
 cap = cv2.VideoCapture(VIDEO_SOURCE)
 RECORD_VIDEO = True if VIDEO_SOURCE in [0, 1] else True
+RECORD_RESULT_VIDEO = True
 RECORD_IMAGES = True
 
 
@@ -200,19 +202,44 @@ class VITONDemo():
         return image_output[0]
 
 
+SEGMENT_COLOR = visualize.random_colors(N=20)
 def draw_segment_mask(frame, masks):
-    color = visualize.random_colors(N=20)
-    frame = visualize.apply_mask(frame, masks, color=color,
+    frame = visualize.apply_mask(frame, masks, color=SEGMENT_COLOR,
                                  class_ids=[v for v in
                                             range(1,
                                                   20)])
     return frame
 
 
+def draw_humans(npimg, centers, imgcopy=True):
+    if imgcopy:
+        npimg = np.copy(npimg)
+    image_h, image_w = npimg.shape[:2]
+    for i, center in centers.items():
+        cv2.circle(npimg, center, 3, CocoColors[i],
+                   thickness=3, lineType=8, shift=0)
+
+        for pair_order, pair in enumerate(CocoPairsRender):
+            if pair[0] not in centers \
+                    or pair[1] not in centers:
+                continue
+
+            npimg = cv2.line(npimg, centers[pair[0]],
+                             centers[pair[1]], CocoColors[pair_order], 3)
+    return npimg
+
 demo = VITONDemo()
 OUT_WINDOW_NAME = 'VITON'
 SEG_WINDOW_NAME = 'Segmentation'
+POSE_WINDOW_NAME = 'Pose'
 ORIGIN_WINDOW_NAME = 'input'
+WINDOWS = [ORIGIN_WINDOW_NAME,
+           POSE_WINDOW_NAME,
+           SEG_WINDOW_NAME,
+           OUT_WINDOW_NAME]
+for i, window in enumerate(WINDOWS):
+    cv2.namedWindow(window)
+    cv2.moveWindow(window, i*480, 20)
 VITON_OUTPUT_DIR = 'outputs'
 if not os.path.exists(VITON_OUTPUT_DIR):
     os.makedirs(VITON_OUTPUT_DIR)
@@ -226,11 +253,15 @@ if RECORD_VIDEO:
                             .format(output_dir, current_time))
     fourcc = cv2.VideoWriter_fourcc(*'X264')
     ret, img = cap.read()
+    if VIDEO_SOURCE in [0, 1]:
+        img = np.rot90(img, 3)
     video_writer = cv2.VideoWriter(VIDEO_INPUT_FILENAME,
                                    fourcc, 30,
-                                   (img.shape[0], img.shape[1]))
+                                   (img.shape[1], img.shape[0]))
     logger.info("Writing video to {}".format(VIDEO_INPUT_FILENAME))
+count = 0
 while 1:
+    count += 1
     t = time.time()
     ret, img = cap.read()
     if VIDEO_SOURCE in [0, 1]:
@@ -238,7 +269,7 @@ while 1:
     k = cv2.waitKey(25) & 0xFF
     if k == ord('q'):
         break
-    elif k == ord('c'):
+    elif k == ord('c') or (RECORD_RESULT_VIDEO and count % 8 == 0):
         img_name = 'data/women_top/000001_0.jpg'
         img_name = 'test_person2.jpg'
         img_name = 'test_person.jpg'
@@ -255,6 +286,9 @@ while 1:
         url = 'http://140.112.29.182:8000/pose'
         r = requests.post(url, files=files)
         poses = pickle.loads(r.content)
+        posed_img = draw_humans(img, poses)
+        posed_img = cv2.cvtColor(posed_img, cv2.COLOR_RGB2BGR)
+        cv2.imshow(POSE_WINDOW_NAME, posed_img)
 
         # Get seg masks
         logger.info("Getting seg ..")
@@ -263,6 +297,7 @@ while 1:
         r = requests.post(url, files=files)
         masks = pickle.loads(r.content)
         masked_img = draw_segment_mask(img.copy(), masks)
+        masked_img = cv2.cvtColor(masked_img, cv2.COLOR_RGB2BGR)
         cv2.imshow(SEG_WINDOW_NAME, masked_img)
 
         prod_img = np.array(Image.open(prod_name))
@@ -274,26 +309,31 @@ while 1:
         if RECORD_IMAGES:
             current_time = strftime("%Y%m%d_%H%M%s", gmtime())
             output = output * 255
-            masked_img = cv2.cvtColor(masked_img, cv2.COLOR_RGB2BGR)
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            with open("{}/{}_mask.jpg"
+            """
+            with open("{}/{}_mask.pickle"
                       .format(VITON_OUTPUT_DIR, current_time), 'wb') as f:
                 pickle.dump(masks, f)
+            """
             cv2.imwrite("{}/{}_seg.jpg"
                         .format(VITON_OUTPUT_DIR, current_time), masked_img)
+            cv2.imwrite("{}/{}_pose.jpg"
+                        .format(VITON_OUTPUT_DIR, current_time), posed_img)
             cv2.imwrite("{}/{}.jpg"
                         .format(VITON_OUTPUT_DIR, current_time), img)
             cv2.imwrite("{}/{}_viton.jpg"
                         .format(VITON_OUTPUT_DIR, current_time), output)
-        pdb.set_trace()
+        # pdb.set_trace()
         # res = cv2.bitwise_and(img, img, mask=masked_img)
         print(1 / (time.time() - t))
     cv2.imshow(ORIGIN_WINDOW_NAME, img)
     fourcc = cv2.VideoWriter_fourcc(*'X264')
     if RECORD_VIDEO:
         video_writer.write(img)
+    elif RECORD_RESULT_VIDEO:
+        video_writer.write(img)
     else:
-        sleep(0.2)
+        sleep(0.5)
 if RECORD_VIDEO:
     video_writer.release()
 cap.release()
