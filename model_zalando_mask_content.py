@@ -38,8 +38,8 @@ FLAGS = tf.app.flags.FLAGS
 tf.flags.DEFINE_string("input_file_pattern",
                        "./prepare_data/tfrecord/zalando-train-?????-of-00032",
                        "File pattern of sharded TFRecord input files.")
-tf.flags.DEFINE_string("mode", "train", "Training or testing")
-tf.flags.DEFINE_string("checkpoint", "", "Checkpoint path to resume training.")
+tf.flags.DEFINE_string("mode", "test", "Training or testing")
+tf.flags.DEFINE_string("checkpoint", "model/stage1/model-15000", "Checkpoint path to resume training.")
 tf.flags.DEFINE_string("output_dir", "model/stage1/",
                        "Output directory of images.")
 tf.flags.DEFINE_string("vgg_model_path", "./model/imagenet-vgg-verydeep-19.mat",
@@ -190,11 +190,11 @@ def create_model(product_image, body_seg, skin_seg, pose_map, prod_seg, image):
     mask_outputs = outputs[:,:,:,:prod_seg.get_shape()[-1]]
     # output image
     image_outputs = outputs[:,:,:,prod_seg.get_shape()[-1]:]
-    
+
     # losses
     gen_loss_mask_L1 = tf.reduce_mean(tf.abs(prod_seg - mask_outputs))
     gen_loss_content_L1 = tf.reduce_mean(tf.abs(image - image_outputs))
-    
+
     if FLAGS.perceptual_weight > 0.0:
       with tf.variable_scope("vgg_19"):
         vgg_real = build_vgg19(image, FLAGS.vgg_model_path)
@@ -214,12 +214,12 @@ def create_model(product_image, body_seg, skin_seg, pose_map, prod_seg, image):
                            vgg_fake['conv5_2']) / 0.16  # 8*8*512
         perceptual_loss = (p1 + p2 + p3 + p4 + p5) / 5.0 / 128.0
         # 128.0 for normalize to [0.1]
-        
+
       gen_loss = (FLAGS.mask_l1_weight * gen_loss_mask_L1 +
                   FLAGS.content_l1_weight * gen_loss_content_L1 +
                   FLAGS.perceptual_weight * perceptual_loss)
     else:
-      perceptual_loss = tf.get_variable('perceptual_loss', dtype=tf.float32, 
+      perceptual_loss = tf.get_variable('perceptual_loss', dtype=tf.float32,
                                         initializer=tf.constant(0.0))
       gen_loss = (FLAGS.mask_l1_weight * gen_loss_mask_L1 +
                   FLAGS.content_l1_weight * gen_loss_content_L1)
@@ -348,7 +348,7 @@ def main(unused_argv):
                            save_summaries_secs=0, saver=None)
   with sv.managed_session() as sess:
     tf.logging.info("parameter_count = %d" % sess.run(parameter_count))
-    
+
     if FLAGS.checkpoint != "":
       tf.logging.info("loading model from checkpoint")
       checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint)
@@ -429,14 +429,14 @@ def main(unused_argv):
           filesets = save_images(results["display"],
                                  image_dict=["body_segment", "skin_segment",
                                              "prod_segment", "mask_outputs",
-                                             "product_image", "image", 
+                                             "product_image", "image",
                                              "image_outputs"],
                                  output_dir=FLAGS.output_dir,
                                  step=results["global_step"])
-          append_index(filesets, 
+          append_index(filesets,
                        image_dict=["body_segment", "skin_segment",
                                    "prod_segment", "mask_outputs",
-                                   "product_image", "image", 
+                                   "product_image", "image",
                                    "image_outputs"],
                        output_dir=FLAGS.output_dir,
                        step=True)
