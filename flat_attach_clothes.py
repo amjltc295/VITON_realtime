@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import time
 
-def flat_attach_clothes(mask, original, clothes, debug=False):
+def flat_attach_clothes(mask, original, trimmed_clothes, debug=False):
     '''
     # mask: pickle file
     mask = pickle.load(open('outputs/20180331_08431522457007_mask.pickle',
@@ -45,12 +45,11 @@ def flat_attach_clothes(mask, original, clothes, debug=False):
     t = time.time()
 
     # new_clothes = trim_clothes(clothes)
-    new_clothes = cv2.imread('outputs/save/clothes_trim.jpg')
-    print(time.time() - t)
-    t = time.time()
+    # print(time.time() - t)
+    # t = time.time()
     
     # resize clothes to size of segmentation
-    resized_image = cv2.resize(new_clothes, (right-left, bot-top))
+    resized_image = cv2.resize(trimmed_clothes, (right-left, bot-top))
     if (debug):
         cv2.imwrite('outputs/save/clothes_resize.jpg', resized_image)
 
