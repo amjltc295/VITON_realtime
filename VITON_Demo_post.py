@@ -20,6 +20,7 @@ import os
 from time import gmtime, strftime, sleep
 import threading
 from queue import Queue, Empty
+from DigCtrl import digCtrl, arduinoInit
 
 
 __author__ = "Ya-Liang Chang (Allen)"
@@ -56,6 +57,7 @@ SEG_WINDOW_NAME = 'Segmentation'
 POSE_WINDOW_NAME = 'Pose'
 ORIGIN_WINDOW_NAME = 'input'
 OUT2_WINDOW_NAME = 'Attached'
+CLOTHES_WINDOW_NAME = 'Clothes'
 
 ##################
 # Queue Settings #
@@ -70,8 +72,9 @@ TMP_IMAGE_NAME = 'tmp.jpg'
 TMP_OUTPUT_NAME = 'tmp_out.jpg'
 TMP_OUTPUT_NAME2 = 'tmp_out2.jpg'
 TMP_DATA_PICKLE_NAME = 'pose_and_seg_data.pickle'
-VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
 VIDEO_SOURCE = 1
+VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
+VIDEO_SOURCE = './inputs/test2.mp4'
 RECORD_VIDEO = True if VIDEO_SOURCE in [0, 1] else True
 RECORD_RESULT_VIDEO = True
 RECORD_IMAGES = True
@@ -89,6 +92,11 @@ POSE_URL = POSE_SERVER + '/pose'
 VITON_SERVER = 'http://localhost:5000'
 VITON_URL = VITON_SERVER + '/viton'
 CHANGE_CLOTH_URL = VITON_SERVER + '/change'
+
+####################
+# Control Settings #
+####################
+MOTOR_CONTROL = False
 
 
 class FrameReader(threading.Thread):
@@ -109,9 +117,11 @@ class FrameReader(threading.Thread):
         while self.run_flag:
             count += 1
             ret, frame = self.cap.read()
-            frame = cv2.resize(frame, (480, 360))
             if VIDEO_SOURCE in [0, 1]:
                 frame = np.rot90(frame, 3)
+            else:
+                sleep(0.5)
+            frame = cv2.resize(frame, (360, 480))
             if self.frame_queue.full():
                 self.frame_queue.get()
             self.frame_queue.put(frame)
@@ -538,6 +548,8 @@ class Displayer(threading.Thread):
         self.threadManager = threadManager
         self.run_flag = True
         self.pause_flag = False
+        if MOTOR_CONTROL:
+            arduinoInit()
 
     def run(self):
         while self.run_flag:
@@ -560,6 +572,16 @@ class Displayer(threading.Thread):
             except Empty:
                 logger.warning("Display not getting frames")
                 pass
+            # Show clothes
+            try:
+                clothes = cv2.imread('inputs/Trifecta.jpg')
+                cv2.imshow(CLOTHES_WINDOW_NAME, clothes)
+                cv2.namedWindow(CLOTHES_WINDOW_NAME)
+                cv2.moveWindow(CLOTHES_WINDOW_NAME, 0, 700)
+            except Exception as err:
+                logger.error("Failed to open clothes: {}"
+                             .format(err))
+
             # Show pose
             try:
                 posed_img = self.pose_frame_queue.get_nowait()
@@ -590,7 +612,7 @@ class Displayer(threading.Thread):
                 attached_img = self.viton_frame_queue2.get_nowait()
                 cv2.imshow(OUT2_WINDOW_NAME, attached_img)
                 cv2.namedWindow(OUT2_WINDOW_NAME)
-                cv2.moveWindow(OUT2_WINDOW_NAME, 0, 620)
+                cv2.moveWindow(OUT2_WINDOW_NAME, 1440, 600)
             except Empty:
                 pass
 
@@ -611,6 +633,18 @@ class Displayer(threading.Thread):
             elif k == ord('s'):
                 r = requests.post(CHANGE_CLOTH_URL, data="s.jpg")
                 logger.info(r.content)
+            elif k == ord('d'):
+                r = requests.post(CHANGE_CLOTH_URL, data="d.jpg")
+                logger.info(r.content)
+            elif k == ord('f'):
+                r = requests.post(CHANGE_CLOTH_URL, data="f.jpg")
+                logger.info(r.content)
+            elif k == ord('1') and MOTOR_CONTROL:
+                logger.info("Turn 1")
+                digCtrl(1)
+            elif k == ord('2') and MOTOR_CONTROL:
+                logger.info("Turn 2")
+                digCtrl(2)
 
     def stop(self):
         self.run_flag = False
