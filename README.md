@@ -5,6 +5,40 @@ Real time virtual try-on for 2018 Make NTU
 Based on [VITON: An Image-based Virtual Try-on Network](https://github.com/xthan/VITON)
 , code and dataset for the CVPR 2018 paper "VITON: An Image-based Virtual Try-on Network"
 
+## How to run?
+
+For remote server with GPU support, run the below for API server to deal with pose and segmentation inferrence:
+```
+conda env create -f environment.yml
+source activate MakeNTU
+export FLASK_APP=VITON_API_Server.py
+flask run
+```
+
+For local server, run the below to do VITON inferrence and avoid tensorflow session problem for concurrency:
+```
+conda env create -f environment.yml
+source activate MakeNTU
+export FLASK_APP=VITON_local_server.py
+flask run
+```
+
+Finally, run the main app:
+```
+source activate MakeNTU
+python VITON_Demo_post.py
+```
+
+Other files are for running all things locally or without concurrency.
+
+One could also run ```python post_viton.py``` to run without local VITON server.
+
+## The below are from the original repo.
+
+The original repo uses matlab script instead of end-to-end network.
+
+This repo does not implement the second stage of the original repo.
+
 ### Person representation extraction
 The person representation used in this paper are extracted by a 2D pose estimator and a human parser:
 * [Realtime Multi-Person Pose Estimation](https://github.com/ZheC/Realtime_Multi-Person_Pose_Estimation)
