@@ -53,7 +53,7 @@ seg_config = SegInferenceConfig()
 seg_config.display()
 
 
-def draw_humans(npimg, humans, imgcopy=False):
+def draw_humans(npimg, humans, imgcopy=False, return_frame=False):
     if imgcopy:
         npimg = np.copy(npimg)
     image_h, image_w = npimg.shape[:2]
@@ -79,8 +79,10 @@ def draw_humans(npimg, humans, imgcopy=False):
 
             npimg = cv2.line(npimg, centers[pair[0]],
                              centers[pair[1]], CocoColors[pair_order], 3)
-    return centers
-    return npimg
+    if return_frame:
+        return npimg
+    else:
+        return centers
 
 
 class VITONDemo():
@@ -88,7 +90,6 @@ class VITONDemo():
         logger.info("Loading pose_inferrer ...")
         self.pose_inferrer = Pose_Inferrer(get_graph_path('mobilenet_thin'),
                                            target_size=(VIDEO_W, VIDEO_H))
-        """
         logger.info("Creating seg_inferrer ...")
         self.seg_inferrer = Seg_Inferrer(mode="inference",
                                          model_dir=SS_NAN_MODEL_DIR,
@@ -128,6 +129,7 @@ class VITONDemo():
                 checkpoint = FLAGS.checkpoint
             logger.info("Checkpoint: {}".format(checkpoint))
             saver.restore(self.sess, checkpoint)
+        """
 
         logger.info("Initialization done")
 
@@ -247,6 +249,7 @@ def home():
 
 @app.route("/pose", methods=["POST"])
 def pose():
+    logger.info("Pose inferreing ..")
     img = Image.open(request.files['files'])
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -256,12 +259,14 @@ def pose():
     pdb.set_trace()
     """
     humans_pickle = pickle.dumps(humans)
+    logger.info("Pose inferreing Done")
 
     return humans_pickle
 
 
 @app.route("/seg", methods=["POST"])
 def segment():
+    logger.info("Seg inferreing ..")
     img = Image.open(request.files['files'])
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -280,5 +285,6 @@ def viton():
     masks = demo.seg_infer(img)
     prod_img = np.array(Image.open('test/product.jpg'))
     output = demo.viton_infer(img, prod_img, poses, masks)
+    logger.info("Seg inferreing Done")
 
     return output
