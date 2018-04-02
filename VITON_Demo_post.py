@@ -117,6 +117,7 @@ class FrameReader(threading.Thread):
         while self.run_flag:
             count += 1
             ret, frame = self.cap.read()
+            frame = cv2.flip(frame, 0)
             if VIDEO_SOURCE in [0, 1]:
                 frame = np.rot90(frame, 3)
             else:
@@ -313,7 +314,7 @@ class VITONWorker(threading.Thread):
         self.viton_frame_queue2 = viton_frame_queue2
         self.run_flag = True
         self.pause_flag = False
-        self.prod_name = './test_product.jpg'
+        self.prod_name = './inputs/a.jpg'
         if RECORD_VIDEO and False:
             current_time = strftime("%Y%m%d_%H%M", gmtime())
             output_dir = './inputs'
