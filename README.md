@@ -15,12 +15,17 @@ The human parser is based on [SS-NAN](https://github.com/llltttppp/SS-NAN)
 
 The pose estimator is based on [tf-pose-estimation](https://github.com/ildoonet/tf-pose-estimation)
 
-**Note: the tf-pose-estimation is not as good as Openpose!! It often failed to detect some easy cases.**
+**Note: the tf-pose-estimation is not as good as Openpose!! It often fails to detect some easy cases.**
 
 
 ## How to run?
 
-For remote server with GPU support, run the below for API server to deal with pose and segmentation inferrence:
+1. Download related models
+* Download pretrained SS-NAN model [here](https://pan.baidu.com/s/1nvMMl0P). Put AttResnet101FCN_lip_0023.h5 under SS-NAN/ folder.
+* Model of tf-pose-estimation is already in the repo since it could use mobile-net.
+* Download pretrained VITON models on [Google Drive](https://drive.google.com/drive/folders/1qFU4KmvnEr4CwEFXQZS_6Ebw5dPJAE21). Put them under model/ folder.
+
+2. For remote server with GPU support, run the below for API server to deal with pose and segmentation inferrence:
 ```
 conda env create -f environment.yml
 source activate MakeNTU
@@ -28,7 +33,7 @@ export FLASK_APP=VITON_API_Server.py
 flask run
 ```
 
-For local server, run the below to do VITON inferrence and avoid tensorflow session problem for concurrency:
+3. For local server, run the below to do VITON inferrence and avoid tensorflow session problem for concurrency:
 ```
 conda env create -f environment.yml
 source activate MakeNTU
@@ -36,7 +41,7 @@ export FLASK_APP=VITON_local_server.py
 flask run
 ```
 
-Finally, run the main app:
+4. Finally, run the main app:
 ```
 export SEG_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
 export POSE_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
