@@ -2,7 +2,7 @@
 
 Real time virtual try-on for 2018 Make NTU
 
-![result1](result1.png)
+![result1](images/result1.png)
 
 [Demo video](https://youtu.be/21y2Ly9FVl0)
 
@@ -15,7 +15,7 @@ The human parser is based on [SS-NAN](https://github.com/llltttppp/SS-NAN)
 
 The pose estimator is based on [tf-pose-estimation](https://github.com/ildoonet/tf-pose-estimation)
 
-*Note: the tf-pose-estimation is not as good as Openpose!! It often failed to detect some easy cases.*
+**Note: the tf-pose-estimation is not as good as Openpose!! It often failed to detect some easy cases.**
 
 
 ## How to run?
@@ -51,9 +51,9 @@ One could also run ```python post_viton.py``` to run without local VITON server.
 
 ## Authors
 
-Ya-Liang Chang - All server parts, CNNs and demo apps  [amjltc295](https://github.com/amjltc295)
+**Ya-Liang Chang** - *All servers / clients, CNNs and demo apps*  [amjltc295](https://github.com/amjltc295)
 
-Hsi-Sheng Mei - Attach clothes algorithm - [jasonoscar88](https://github.com/jasonoscar88)
+**Hsi-Sheng Mei** - *Attach clothes algorithm* - [jasonoscar88](https://github.com/jasonoscar88)
 
 # The below are from the original repo.
 
