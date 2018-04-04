@@ -3,6 +3,7 @@
 Real time virtual try-on for 2018 Make NTU
 
 ![result1](images/result1.png)
+Fig 1: Input: original input image; Pose: detected pose (it's not good because of using tf-pose-estimation); Segmentation: human parser result; VTION: VITON result based on pose and segmentation and given clothes; Attached: algorithm we developed to paste clothes on original picture using segmentation result; Clothes: given clothes to try on.
 
 [Demo video](https://youtu.be/21y2Ly9FVl0)
 
@@ -41,13 +42,22 @@ export FLASK_APP=VITON_local_server.py
 flask run
 ```
 
-4. Finally, run the main app:
+4. Change settings in VITON_Demo_post:
+Set VIDEO_SOURCE to your webcam number or video path.
+
+5. Finally, run the main app:
 ```
 export SEG_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
 export POSE_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
 export VITON_SERVER='http://localhost:5000'
 source activate MakeNTU
 python VITON_Demo_post.py
+```
+Keyboard controls
+```
+q: to exit
+c: to capture image and do virtual try-on
+a/s/d/f: change clothes to try on
 ```
 
 Other files are for running all things locally or without concurrency.
