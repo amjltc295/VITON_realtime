@@ -2,11 +2,6 @@
 
 Real time virtual try-on for 2018 Make NTU
 
-![result1](images/result1.png)
-Fig 1: Input: original input image; Pose: detected pose (it's not good because of using tf-pose-estimation); Segmentation: human parser result; VTION: VITON result based on pose and segmentation and given clothes; Attached: algorithm we developed to paste clothes on original picture using segmentation result; Clothes: given clothes to try on.
-
-[Demo video](https://youtu.be/21y2Ly9FVl0)
-
 We made a clothes vendor machine that has virtual try-on feature. Here we just demostrate the software part.
 
 The virtual try-on part is based on [VITON: An Image-based Virtual Try-on Network](https://github.com/xthan/VITON)
@@ -17,6 +12,18 @@ The human parser is based on [SS-NAN](https://github.com/llltttppp/SS-NAN)
 The pose estimator is based on [tf-pose-estimation](https://github.com/ildoonet/tf-pose-estimation)
 
 **Note: the tf-pose-estimation is not as good as Openpose!! It often fails to detect some easy cases.**
+
+![result1](images/result1.png)
+<sub>**Fig 1** 
+Input: original input image; 
+Pose: detected pose (it's not good because of using tf-pose-estimation); 
+Segmentation: human parser result; 
+VTION: VITON result based on pose and segmentation and given clothes; 
+Attached: algorithm we developed to paste clothes on original picture using segmentation result; 
+Clothes: given clothes to try on.
+Input image is cropped from [here](https://www.youtube.com/watch?v=b4mzZaEliZU&feature=youtu.be)</sub>
+
+[Demo video](https://youtu.be/21y2Ly9FVl0)
 
 
 ## How to run?
