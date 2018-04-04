@@ -73,7 +73,6 @@ TMP_OUTPUT_NAME = 'tmp_out.jpg'
 TMP_OUTPUT_NAME2 = 'tmp_out2.jpg'
 TMP_DATA_PICKLE_NAME = 'pose_and_seg_data.pickle'
 VIDEO_SOURCE = 1
-VIDEO_SOURCE = '/home/allen/Downloads/test.mp4'
 VIDEO_SOURCE = './inputs/test2.mp4'
 RECORD_VIDEO = True if VIDEO_SOURCE in [0, 1] else True
 RECORD_RESULT_VIDEO = True
@@ -85,13 +84,14 @@ if not os.path.exists(VITON_OUTPUT_DIR):
 ###################
 # Server Settings #
 ###################
-SEG_SERVER = 'http://140.112.29.182:8000'
+SEG_SERVER = os.environ.get('SEG_SERVER')
 SEG_URL = SEG_SERVER + '/seg'
-POSE_SERVER = 'http://140.112.29.182:8000'
+POSE_SERVER = os.environ.get('POSE_SERVER')
 POSE_URL = POSE_SERVER + '/pose'
-VITON_SERVER = 'http://localhost:5000'
+VITON_SERVER = os.environ.get('VITON_SERVER')
 VITON_URL = VITON_SERVER + '/viton'
 CHANGE_CLOTH_URL = VITON_SERVER + '/change'
+ATTACH_URL = VITON_SERVER + '/attach'
 
 ####################
 # Control Settings #
@@ -117,10 +117,14 @@ class FrameReader(threading.Thread):
         while self.run_flag:
             count += 1
             ret, frame = self.cap.read()
+            frame = cv2.flip(frame, 0)
             if VIDEO_SOURCE in [0, 1]:
-                frame = np.rot90(frame, 3)
+                frame = np.rot90(frame, 1)
             else:
                 sleep(0.5)
+            frame = cv2.imread('inputs/000005_0.jpg')
+            frame = cv2.imread('download.jpeg')
+            frame = cv2.imread('test_person6.jpg')
             frame = cv2.resize(frame, (360, 480))
             if self.frame_queue.full():
                 self.frame_queue.get()
@@ -198,7 +202,7 @@ class SegmentationExtractor(threading.Thread):
             try:
                 logger.info("Getting seg")
                 files = {'files': open(TMP_IMAGE_NAME, 'rb')}
-                url = 'http://140.112.29.182:8000/seg'
+                url = SEG_URL
                 r = requests.post(url, files=files)
                 masks = pickle.loads(r.content)
                 masked_img = self.draw_segment_mask(frame.copy(), masks)
@@ -278,7 +282,7 @@ class PoseEstimator(threading.Thread):
             # Get pose
             logger.info("Getting pose ..")
             files = {'files': open(TMP_IMAGE_NAME, 'rb')}
-            url = 'http://140.112.29.182:8000/pose'
+            url = POSE_URL
             r = requests.post(url, files=files)
             poses = pickle.loads(r.content)
             posed_img = self.draw_humans(frame, poses)
@@ -324,7 +328,7 @@ class VITONWorker(threading.Thread):
             fourcc = cv2.VideoWriter_fourcc(*'X264')
             ret, img = self.cap.read()
             if VIDEO_SOURCE in [0, 1]:
-                img = np.rot90(img, 3)
+                img = np.rot90(img, 1)
             self.video_writer = cv2.VideoWriter(VIDEO_INPUT_FILENAME,
                                                 fourcc, 30,
                                                 (img.shape[1], img.shape[0]))
@@ -509,10 +513,10 @@ class VITONWorker(threading.Thread):
             """
             pickle.dump(pose_and_seg_data,
                         open(TMP_DATA_PICKLE_NAME, 'wb'))
-            url = 'http://localhost:5000/viton'
+            url = VITON_URL
             requests.get(url)
             output = cv2.imread(TMP_OUTPUT_NAME)
-            url = 'http://localhost:5000/attach'
+            url = ATTACH_URL
             requests.get(url)
             output2 = cv2.imread(TMP_OUTPUT_NAME2)
             self.viton_frame_queue.put(output)
