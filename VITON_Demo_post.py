@@ -122,9 +122,6 @@ class FrameReader(threading.Thread):
                 frame = np.rot90(frame, 1)
             else:
                 sleep(0.5)
-            frame = cv2.imread('inputs/000005_0.jpg')
-            frame = cv2.imread('download.jpeg')
-            frame = cv2.imread('test_person6.jpg')
             frame = cv2.resize(frame, (360, 480))
             if self.frame_queue.full():
                 self.frame_queue.get()
@@ -638,7 +635,7 @@ class Displayer(threading.Thread):
                 r = requests.post(CHANGE_CLOTH_URL, data="s.jpg")
                 logger.info(r.content)
             elif k == ord('d'):
-                r = requests.post(CHANGE_CLOTH_URL, data="d.jpg")
+                r = requests.post(CHANGE_CLOTH_URL, data="d_0.jpg")
                 logger.info(r.content)
             elif k == ord('f'):
                 r = requests.post(CHANGE_CLOTH_URL, data="f.jpg")

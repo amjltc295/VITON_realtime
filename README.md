@@ -1,9 +1,22 @@
-# VITON Real-tim
+# VITON Real-time
 
 Real time virtual try-on for 2018 Make NTU
 
-Based on [VITON: An Image-based Virtual Try-on Network](https://github.com/xthan/VITON)
+![result1](result1.png)
+
+[Demo video](https://youtu.be/21y2Ly9FVl0)
+
+We made a clothes vendor machine that has virtual try-on feature. Here we just demostrate the software part.
+
+The virtual try-on part is based on [VITON: An Image-based Virtual Try-on Network](https://github.com/xthan/VITON)
 , code and dataset for the CVPR 2018 paper "VITON: An Image-based Virtual Try-on Network"
+
+The human parser is based on [SS-NAN](https://github.com/llltttppp/SS-NAN)
+
+The pose estimator is based on [tf-pose-estimation](https://github.com/ildoonet/tf-pose-estimation)
+
+*Note: the tf-pose-estimation is not as good as Openpose!! It often failed to detect some easy cases.*
+
 
 ## How to run?
 
@@ -25,6 +38,9 @@ flask run
 
 Finally, run the main app:
 ```
+export SEG_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
+export POSE_SERVER=<IP address ofthe remote server, like http://192.168.0.123>
+export VITON_SERVER='http://localhost:5000'
 source activate MakeNTU
 python VITON_Demo_post.py
 ```
@@ -33,7 +49,13 @@ Other files are for running all things locally or without concurrency.
 
 One could also run ```python post_viton.py``` to run without local VITON server.
 
-## The below are from the original repo.
+## Authors
+
+Ya-Liang Chang - All server parts, CNNs and demo apps  [amjltc295](https://github.com/amjltc295)
+
+Hsi-Sheng Mei - Attach clothes algorithm - [jasonoscar88](https://github.com/jasonoscar88)
+
+# The below are from the original repo.
 
 The original repo uses matlab script instead of end-to-end network.
 
