@@ -56,9 +56,13 @@ One could also run ```python post_viton.py``` to run without local VITON server.
 
 ## Authors
 
-**Ya-Liang Chang** - *All servers / clients, CNNs and demo apps*  [amjltc295](https://github.com/amjltc295)
+* **Ya-Liang Chang** - *All servers / clients, CNNs and demo apps*  [amjltc295](https://github.com/amjltc295)
 
-**Hsi-Sheng Mei** - *Attach clothes algorithm* - [jasonoscar88](https://github.com/jasonoscar88)
+* **Hsi-Sheng Mei** - *Attach clothes algorithm* - [jasonoscar88](https://github.com/jasonoscar88)
+
+* **albert18711** - *Control*
+
+* **KU-MING Wang** - *Hardware*
 
 # The below are from the original repo.
 
