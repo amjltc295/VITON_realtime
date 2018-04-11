@@ -87,7 +87,7 @@ One could also run ```python post_viton.py``` to run without local VITON server.
 
 * **Hsi-Sheng Mei** - *Attach clothes algorithm* - [jasonoscar88](https://github.com/jasonoscar88)
 
-* **albert18711** - *Control*
+* **albert18711** - *Control / PPT*
 
 * **KU-MING Wang** - *Hardware*
 
