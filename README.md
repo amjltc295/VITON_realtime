@@ -2,7 +2,15 @@
 
 Real time virtual try-on for 2018 Make NTU
 
+## What did we do?
+
 We made a clothes vendor machine that has virtual try-on feature. Here we just demostrate the software part.
+
+Three models (pose / segmentation / VITON) and five threads (read frame / pose / segment / VITON / display & control) are used in this demo program. It's a bit tricky to make it real-time (and MakeNTU is just a 24-hour event!).
+
+Segmentation inference requires heavy GPU calculation and Python threading has some problem dealing with mulitple tensorflow program, so I wrote API servers to separate those parts from threads in the main program.
+
+By doing so, five threads could do their tasks respectively. If you could get a smaller segmentation network or powerful GPU, real-time virtual try-on with VITON is possible. For now only frame reading is real-time, while other processes need to be triggered by keyboard control. 
 
 The virtual try-on part is based on [VITON: An Image-based Virtual Try-on Network](https://github.com/xthan/VITON)
 , code and dataset for the CVPR 2018 paper "VITON: An Image-based Virtual Try-on Network"
@@ -13,15 +21,18 @@ The pose estimator is based on [tf-pose-estimation](https://github.com/ildoonet/
 
 **Note: the tf-pose-estimation is not as good as Openpose!! It often fails to detect some easy cases.**
 
+## Results
+
 ![result1](images/result1.png)
-<sub>**Fig 1** 
+![result2](images/result2.png)
+<sub>**Fig 1 & 2** 
 Input: original input image; 
 Pose: detected pose (it's not good because of using tf-pose-estimation); 
 Segmentation: human parser result; 
 VTION: VITON result based on pose and segmentation and given clothes; 
 Attached: algorithm we developed to paste clothes on original picture using segmentation result; 
 Clothes: given clothes to try on.
-Input image is cropped from [here](https://www.youtube.com/watch?v=b4mzZaEliZU&feature=youtu.be)</sub>
+Input image is cropped from [here](https://www.facebook.com/139558289414447/photos/a.153087201394889.28055.139558289414447/1129802803723319/?type=1&theater) and [here](https://www.youtube.com/watch?v=b4mzZaEliZU&feature=youtu.be)</sub>
 
 [Demo video](https://youtu.be/21y2Ly9FVl0)
 
