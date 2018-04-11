@@ -48,8 +48,7 @@ Input image is cropped from [here](https://www.facebook.com/139558289414447/phot
 ```
 conda env create -f environment.yml
 source activate MakeNTU
-export FLASK_APP=VITON_API_Server.py
-flask run
+bash run_API_server.sh
 ```
 
 3. For local server, run the below to do VITON inferrence and avoid tensorflow session problem for concurrency:
