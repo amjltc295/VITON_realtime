@@ -8,7 +8,7 @@ We made a clothes vendor machine that has virtual try-on feature. Here we just d
 
 Three models (pose / segmentation / VITON) and five threads (read frame / pose / segment / VITON / display & control) are used in this demo program. It's a bit tricky to make it real-time (and MakeNTU is just a 24-hour event!).
 
-Segmentation inference requires heavy GPU calculation and Python threading has some problem dealing with mulitple tensorflow program, so I wrote API servers to separate those parts from threads in the main program.
+Segmentation inference requires heavy GPU calculation and Python threading has some problem dealing with mulitple tensorflow programs, so I wrote API servers to separate those parts from threads in the main program.
 
 By doing so, five threads could do their tasks respectively. If you could get a smaller segmentation network or powerful GPU, real-time virtual try-on with VITON is possible. For now only frame reading is real-time, while other processes need to be triggered by keyboard control. 
 
