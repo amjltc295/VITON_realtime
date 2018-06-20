@@ -39,7 +39,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 class VITONDemo():
     def __init__(self):
-        self.prod_name = './test_product.jpg'
+        self.prod_name = './inputs/a.jpg'
         logger.info("Loading VITON_worker ...")
         self.batch_size = 1
         self.image_holder = \
