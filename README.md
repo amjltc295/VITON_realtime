@@ -1,6 +1,6 @@
 # VITON Real-time
 
-Real time virtual try-on for 2018 Make NTU
+Real-time virtual try-on demo for 2018 Make NTU
 
 ## What did we do?
 
