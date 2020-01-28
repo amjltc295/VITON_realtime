@@ -27,7 +27,7 @@ scipy==1.0.0
 six==1.11.0
 tabulate==0.8.2
 tensorboard==1.6.0
-tensorflow==1.6.0
+tensorflow==1.15.2
 tensorpack==0.8.3
 termcolor==1.1.0
 tqdm==4.19.8
