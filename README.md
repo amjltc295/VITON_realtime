@@ -1,3 +1,6 @@
+# NOTE 20200430: this repo is no longer maintained.
+We appreciate your interests for this project! Unfortunately, since it was just a MakeNTU project that was not designed to be maintained in the long term (lots of hacking, dirty hard code) and most models and datasets are outdated, this repo is no longer maintained. We do not provide new models or dataset, but if you are interested in making a new virtual try-on demo project, we may be able to share some experience :) Please contact [amjltc295](https://github.com/amjltc295) or open an issue.
+
 # VITON Real-time
 
 Real-time virtual try-on demo for 2018 Make NTU
